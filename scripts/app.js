@@ -342,10 +342,83 @@
     app.saveSelectedCities()
   }
 
+
+
+
+  const applicationServerPublicKey = 'BBdm16yfkHR3eWhjhPkXWICq9HGf255d9KKDSZmxvKJJt4cmN84A-p_ZfQIus-d2M2h4k_rYIHtn53ff5FN7XpM';
+
+
+  let isSubscribed = false;
+  let swRegistration = null;
+
+  function urlB64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+      .replace(/\-/g, '+')
+      .replace(/_/g, '/');
+  
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+  
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+
+
+  document.getElementById('butRefresh').addEventListener('click', e => {
+    if (!subscription) {
+      e.target.disabled = true
+    } else {
+      subscribeUser()
+    }
+  })
+
+  function initialiseUI() {
+    // Set the initial subscription value
+    swRegistration.pushManager.getSubscription()
+      .then(subscription => {
+        isSubscribed = !(subscription === null)
+    
+        if (isSubscribed) {
+          console.log('User IS subscribed');
+        } else {
+          console.log('User is NOT subscribed');
+        }
+      })  
+  }
+
+  function subscribeUser() {
+    const applicationServerKey = urlB64ToUint8Array(applicationServerPublicKey)
+  
+    // Solicita el permiso para mandar notificaciones
+    swRegistration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey
+    })
+      .then(subscription => {
+        console.log('User is subcribed: ', subscription);
+  
+        isSubscribed = true
+  
+      })
+      .catch(error => {
+        console.error('Failed to subscribe the user: ', error);
+      })
+  }
+
   // TODO add service worker code here
-  if ('serviceWorker' in navigator) {
+  if ('serviceWorker' in navigator && 'PushManager' in window) {
     navigator.serviceWorker
       .register('./service-worker.js')
-      .then( _ => console.log('Service Worker Registered'))
+      .then(swReg => {
+        console.log('Service Worker Registered')
+        swRegistration = swReg
+        initialiseUI()
+      })
+      .catch(error => console.error('ServiceWorker Error: ', error))
+  } else {
+    console.warn('Push messaging is not supported');
   }
 })();
